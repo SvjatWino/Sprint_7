@@ -1,6 +1,7 @@
 import pytest
 import requests
-from data import DataForOrder
+from api.courier_api import CourierApi
+from data import DataForOrder, valid_courier_payload
 from urls import Url
 from generators import login_generator, password_generator, name_generator
 
@@ -39,6 +40,27 @@ def new_courier():
     # Удаление курьера после теста
     delete_url = Url.BASE_URL + Url.COURIER_DELETE.format(courier_id=courier_id)
     requests.delete(delete_url)
+
+
+@pytest.fixture
+def created_courier():
+    """Создаёт курьера через CourierApi, возвращает api и payload. После теста удаляет курьера."""
+    api = CourierApi()
+    payload = valid_courier_payload()
+    response = api.create_courier(payload)
+    assert response.status_code == 201
+    assert response.json().get("ok") is True
+
+    yield api, payload
+
+    # Удаление курьера после теста
+    login_resp = api.login_courier({
+        "login": payload["login"],
+        "password": payload["password"]
+    })
+    courier_id = login_resp.json().get("id")
+    if courier_id:
+        api.delete_courier(courier_id)
 
 
 @pytest.fixture
